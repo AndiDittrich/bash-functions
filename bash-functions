@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MPL-2.0
 
-# Version: 0.1.0
+# Version: 0.2.0
 # https://github.com/AndiDittrich/bash-functions
 # ----------------------------------
 # This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. 
@@ -89,4 +89,33 @@ log_error(){
 panic(){
     log_error "$@"
     exit 1
+}
+
+hook_exec(){
+    log_info "hook [$1] triggered"
+
+    # hook set ?
+    if [ -z "$1" ]; then
+        log_error "invalid hook call"
+        return
+    fi
+
+    # default hook source
+    local HOOK_FILE="$BASEDIR/.hooks/$1"
+
+    # hook file exists in working dir ?
+    if [ -f $WORKINGDIR/.hooks/$1 ]; then
+        local HOOK_FILE="$WORKINGDIR/.hooks/$1"
+    fi
+
+    # executable ?
+    if [ ! -f $HOOK_FILE ] || [ ! -x $HOOK_FILE ]; then
+        panic "hook [$HOOK_FILE] cannot be executed"
+    fi
+
+    # run hook
+    log_info "running hook [$1].."
+    HOOK_FN="hook_$1"
+    source $HOOK_FILE
+    $HOOK_FN $2
 }
