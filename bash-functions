@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MPL-2.0
 
-# Version: 0.2.0
+# Version: 0.3.0
 # https://github.com/AndiDittrich/bash-functions
 # ----------------------------------
 # This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. 
@@ -110,7 +110,8 @@ hook_exec(){
 
     # executable ?
     if [ ! -f $HOOK_FILE ] || [ ! -x $HOOK_FILE ]; then
-        panic "hook [$HOOK_FILE] cannot be executed"
+        log_info "hook [$HOOK_FILE] cannot be executed"
+        return
     fi
 
     # run hook
@@ -118,4 +119,52 @@ hook_exec(){
     HOOK_FN="hook_$1"
     source $HOOK_FILE
     $HOOK_FN $2
+}
+
+scriptd_exec(){
+    # hook name provided ?
+    if [ -z "$1" ]; then
+        log_error "invalid script exec call - hook name not provided"
+        return
+    fi
+
+    # hook dir set ?
+    if [ -z "$2" ]; then
+        log_error "invalid script exec call - dir not provided"
+        return
+    fi
+
+    log_info "script hook [$1] triggered"
+
+    local LEGACY_FILENAME="${2}/${1}.sh"
+
+    # single file hook found ?
+    if [ -x "$LEGACY_FILENAME" ]; then
+        log_info "> invoking legacy script"
+        $LEGACY_FILENAME
+    fi
+
+    # hook dir valid ?
+    if [ ! -d "${2}/${1}.d" ]; then
+        log_info "> no hook dir available"
+        return
+    fi
+
+    log_info "> processing [${2}.d/${1}]"
+
+    # get all files with leading priority "00-"
+    find "${2}/${1}.d" -type f,l | grep -E '/[0-9]+-.*$' | sort | while read -r file
+    do
+
+        # show filename
+        log_info "> invoking [$1/$file]"
+
+        # executable ?
+        if [ ! -f $file ] || [ ! -x $file ]; then
+            log_error "hook [$1/$file] cannot be executed"
+        fi
+
+        # execute script
+        $file
+    done
 }
